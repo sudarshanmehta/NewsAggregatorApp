@@ -46,6 +46,6 @@ jobs:
       # Deploy APK to Firebase App Distribution
       - name: Deploying APK to Firebase App Distribution
         run: |
-          firebase appdistribution:distribute build/app/outputs/flutter-apk/News-Aggregator.apk \
+          firebase appdistribution:distribute build/app/outputs/flutter-apk/app-release.apk \
           --app "1:345943993270:android:868050451b7e8818446f17" \
           --token ${{ secrets.FIREBASE_TOKEN }}
