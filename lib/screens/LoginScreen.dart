@@ -1,28 +1,24 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
-import 'package:newsaggregator/screens/CategorySelectionPage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:newsaggregator/utils/RouteConfig.dart';
 
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
 
-  // Function to get Firebase ID token
-  Future<String?> getIdToken() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      String? idToken = await user.getIdToken();
-      return idToken;
-    }
-    return null;
-  }
+  // Controllers for email and password inputs
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
-  // Google Sign-In function
-  Future<User?> signInWithGoogle(BuildContext context) async {
+  // Function to handle Google Sign-In
+  Future<void> signInWithGoogle(BuildContext context) async {
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn();
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
-        return null; // User canceled the sign-in
+        debugPrint("Google Sign-In canceled by user.");
+        return;
       }
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
@@ -31,59 +27,111 @@ class LoginScreen extends StatelessWidget {
         idToken: googleAuth.idToken,
       );
 
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-      User? user = userCredential.user;
+      await FirebaseAuth.instance.signInWithCredential(credential);
 
-      // Get the ID token after successful login
-      String? idToken = await getIdToken();
-      if (idToken != null) {
-        // Navigate to the LandingPage passing the ID Token
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CategorySelectionPage(token: idToken),
-          ),
-        );
-      }
-
-      return user;
+      // Route user based on their preferences
+      _navigateToNextScreen(context);
     } catch (e) {
-      debugPrint('Error during Google Sign-In: $e');
-      return null;
+      debugPrint("Error during Google Sign-In: $e");
+      _showErrorSnackbar(context, "Google Sign-In failed. Please try again.");
     }
   }
 
-  // Function for Email and Password sign-in
-  Future<User?> signInWithEmailPassword(String email, String password, BuildContext context) async {
+  // Function to handle Email/Password Sign-In
+  Future<void> signInWithEmailPassword(BuildContext context) async {
+    String email = emailController.text.trim();
+    String password = passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _showErrorSnackbar(context, "Email and Password cannot be empty.");
+      return;
+    }
+
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      User? user = userCredential.user;
 
-      // Get the ID token after successful login
-      String? idToken = await getIdToken();
-      if (idToken != null) {
-        // Navigate to the LandingPage passing the ID Token
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CategorySelectionPage(token: idToken),
-          ),
-        );
-      }
-
-      return user;
+      // Route user based on their preferences
+      _navigateToNextScreen(context);
     } catch (e) {
-      debugPrint('Error during Email/Password Sign-In: $e');
-      return null;
+      debugPrint("Error during Email/Password Sign-In: $e");
+      _showErrorSnackbar(context, "Email/Password Sign-In failed. Please try again.");
     }
   }
 
-  // Email/Password sign-in form fields
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  // Navigation to the next screen based on user preferences
+  Future<void> _navigateToNextScreen(BuildContext context) async {
+    initializeUserCollections(FirebaseAuth.instance.currentUser?.uid);
+    final nextPage = await RouteConfig.determineInitialPage();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => nextPage),
+    );
+  }
+
+  void initializeUserCollections(String? userId) async {
+    final userProfile = {
+      "username": "",
+      "preferredCategories": [], // Default empty preferences as a List
+      "notificationSettings": {"breaking_news": true, "daily_summary": false},
+      "createdAt": Timestamp.now(),
+      "lastLogin": Timestamp.now(),
+    };
+
+    // Get user document reference
+    DocumentReference userDoc = FirebaseFirestore.instance.collection('users').doc(userId);
+
+    // Check if the user document exists
+    DocumentSnapshot userSnapshot = await userDoc.get();
+    if (!userSnapshot.exists) {
+      // Set user profile if not exists
+      userDoc.set(userProfile);
+    }
+
+    // Check if the bookmarks subcollection exists
+    CollectionReference bookmarksCollection = FirebaseFirestore.instance.collection('users').doc(userId).collection("bookmarks");
+    QuerySnapshot bookmarksSnapshot = await bookmarksCollection.get();
+    if (bookmarksSnapshot.docs.isEmpty) {
+      // Initialize bookmarks if not exists
+      bookmarksCollection.doc("defaultBookmark").set({
+        "createdAt": Timestamp.now(),
+      });
+    }
+
+    // Check if the recommendations document exists
+    DocumentReference recommendationsDoc = FirebaseFirestore.instance.collection("recommendations").doc(userId);
+    DocumentSnapshot recommendationsSnapshot = await recommendationsDoc.get();
+    if (!recommendationsSnapshot.exists) {
+      // Initialize recommendations document if not exists
+      recommendationsDoc.set({
+        "userRef": FirebaseFirestore.instance.collection('users').doc(userId),
+        "recommendedArticles": [], // Empty List for recommendations
+        "generatedAt": Timestamp.now(),
+      });
+    }
+
+    // Check if the notifications collection exists
+    CollectionReference notificationsCollection = FirebaseFirestore.instance.collection("notifications");
+    QuerySnapshot notificationsSnapshot = await notificationsCollection.get();
+    if (notificationsSnapshot.docs.isEmpty) {
+      // Initialize notifications if not exists
+      notificationsCollection.doc(userId).set({
+        "title": "Welcome!",
+        "content": "Welcome to our platform!",
+        "category": "welcome",
+        "sentAt": Timestamp.now(),
+        "status": "unread",
+      });
+    }
+  }
+
+
+  // Show error message as a SnackBar
+  void _showErrorSnackbar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,11 +140,11 @@ class LoginScreen extends StatelessWidget {
         title: const Text('Login'),
       ),
       body: Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
+            children: [
               // App title
               Text(
                 'News Aggregator',
@@ -108,19 +156,22 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
 
-              // Email & Password form
+              // Email input field
               TextField(
                 controller: emailController,
-                decoration: InputDecoration(
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
                   labelText: 'Email',
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 20),
+
+              // Password input field
               TextField(
                 controller: passwordController,
                 obscureText: true,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Password',
                   border: OutlineInputBorder(),
                 ),
@@ -129,30 +180,14 @@ class LoginScreen extends StatelessWidget {
 
               // Email/Password Login Button
               ElevatedButton(
-                onPressed: () async {
-                  String email = emailController.text.trim();
-                  String password = passwordController.text.trim();
-                  User? user = await signInWithEmailPassword(email, password, context);
-                  if (user != null) {
-                    debugPrint("Signed in as: ${user.displayName}");
-                  } else {
-                    debugPrint("Email/Password Sign-In failed.");
-                  }
-                },
+                onPressed: () => signInWithEmailPassword(context),
                 child: const Text('Login with Email'),
               ),
               const SizedBox(height: 20),
 
               // Google Sign-In Button
               ElevatedButton.icon(
-                onPressed: () async {
-                  User? user = await signInWithGoogle(context);
-                  if (user != null) {
-                    debugPrint("Signed in as: ${user.displayName}");
-                  } else {
-                    debugPrint("Google Sign-In canceled or failed.");
-                  }
-                },
+                onPressed: () => signInWithGoogle(context),
                 icon: const Icon(Icons.login),
                 label: const Text('Sign in with Google'),
               ),

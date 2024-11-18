@@ -1,12 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:newsaggregator/utils/Config.dart';
 
+import 'NewsPage.dart';
+
 class CategorySelectionPage extends StatefulWidget {
-  final String token;
-  const CategorySelectionPage({super.key, required this.token});
+  const CategorySelectionPage({super.key});
 
   @override
   _CategorySelectionPageState createState() => _CategorySelectionPageState();
@@ -83,10 +83,17 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
             ),
             ElevatedButton(
               onPressed: selectedCategories.isNotEmpty
-                  ? savePreferencesToFirestore
+                  ? () {
+                savePreferencesToFirestore();
+                // Navigate to the NewsPage
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => NewsPage()),
+                );
+              }
                   : null, // Disable button if no category is selected
               child: const Text('Save Preferences'),
-            ),
+            )
           ],
         ),
       ),
