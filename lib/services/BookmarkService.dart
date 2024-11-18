@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:newsaggregator/models/Article.dart';
 import 'package:newsaggregator/utils/Config.dart';
 
 class BookmarkService {
-  Future<bool> bookmarkArticle(String articleId, String? token, bool isRemove) async {
+  Future<bool> bookmarkArticle(Article article, String? token, bool isRemove) async {
      try {
       final response = await http.post(
         Uri.parse(isRemove ? AppConfig.removeBookmark : AppConfig.bookmark),
@@ -11,7 +12,7 @@ class BookmarkService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token', // Firebase token
         },
-        body: articleId,
+        body: jsonEncode(article.toJson()),
       );
 
       if (response.statusCode == 200) {

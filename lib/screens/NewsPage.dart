@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:newsaggregator/models/Article.dart';
 import 'package:newsaggregator/services/BookmarkService.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
@@ -19,11 +20,11 @@ class NewsPage extends StatefulWidget {
 }
 
 class _NewsPageState extends State<NewsPage> {
-  List<Map<String, String>> newsArticles = [];
+  List<Article> newsArticles = [];
   int currentIndex = 0;
   bool isMenuVisible = false;
   bool isBookmarksTabSelected = false;
-  String? firebaseToken; // Firebase token stored here
+  String? firebaseToken;
 
   // ScreenshotController for capturing the screen
   final ScreenshotController screenshotController = ScreenshotController();
@@ -37,7 +38,6 @@ class _NewsPageState extends State<NewsPage> {
 
   @override
   void dispose() {
-   // screenshotController.dispose();
     super.dispose();
   }
 
@@ -63,16 +63,10 @@ class _NewsPageState extends State<NewsPage> {
     try {
       QuerySnapshot snapshot =
       await FirebaseFirestore.instance.collection('articles').get();
-      List<Map<String, String>> fetchedArticles = [];
-      for (var doc in snapshot.docs) {
-        Map<String, String> articleData = {
-          'articleId': doc.id,
-          'title': doc['title'] ?? 'No Title',
-          'description': doc['description'] ?? 'No Description',
-          'imageUrl': doc['image_url'] ?? '',
-        };
-        fetchedArticles.add(articleData);
-      }
+
+      List<Article> fetchedArticles = snapshot.docs.map((doc) {
+        return Article.fromFirestore(doc);
+      }).toList();
 
       setState(() {
         newsArticles = fetchedArticles;
@@ -82,38 +76,31 @@ class _NewsPageState extends State<NewsPage> {
     }
   }
 
+  // Fetch bookmarked articles from Firestore
   Future<void> fetchBookmarkedArticles() async {
     try {
       final String uid = FirebaseAuth.instance.currentUser!.uid;
 
-      // Fetch the list of bookmarked article references
       QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .collection('bookmarks')
           .get();
 
-      // Extract the article references
-      List<String> bookmarkedArticleRefs = snapshot.docs
-          .map((doc) => doc.get('articleRef') as String)
-          .toList();
+      List<Article> fetchedArticles = snapshot.docs.map((doc) {
+        return Article.fromFirestore(doc);
+      }).toList();
 
-      // Filter the newsArticles list based on the article references
-      List<Map<String, String>> filteredArticles = newsArticles
-          .where((article) => bookmarkedArticleRefs.contains(article['articleId']))
-          .toList();
-
-      // Update the state with filtered articles
       setState(() {
-        newsArticles = filteredArticles;
+        newsArticles = fetchedArticles;
       });
     } catch (e) {
       print("Error fetching bookmarked articles: $e");
     }
   }
 
-  // Bookmark an article using the BookmarkService
-  Future<void> bookmarkArticle(String articleId, bool isRemove) async {
+  // Bookmark an article
+  Future<void> bookmarkArticle(Article article, bool isRemove) async {
     if (firebaseToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Token not available. Please retry.')),
@@ -122,7 +109,7 @@ class _NewsPageState extends State<NewsPage> {
     }
 
     final result = await widget.bookmarkService.bookmarkArticle(
-      articleId,
+      article,
       firebaseToken!,
       isRemove,
     );
@@ -141,18 +128,15 @@ class _NewsPageState extends State<NewsPage> {
   // Share functionality
   Future<void> captureAndShareScreenshot() async {
     try {
-      // Capture the screenshot
       final image = await screenshotController.capture();
       if (image == null) return;
 
-      // Save the image temporarily
       final directory = await getTemporaryDirectory();
       final imagePath = '${directory.path}/screenshot.png';
       final imageFile = File(imagePath);
       await imageFile.writeAsBytes(image);
 
       final xFile = XFile(imagePath);
-      // Share the image
       await Share.shareXFiles([xFile], text: 'Check out this article!');
     } catch (e) {
       print("Error capturing and sharing screenshot: $e");
@@ -165,7 +149,7 @@ class _NewsPageState extends State<NewsPage> {
   @override
   Widget build(BuildContext context) {
     return Screenshot(
-      controller: screenshotController, // Attach the controller
+      controller: screenshotController,
       child: Scaffold(
         body: newsArticles.isEmpty
             ? const Center(child: CircularProgressIndicator())
@@ -204,6 +188,8 @@ class _NewsPageState extends State<NewsPage> {
   }
 
   Widget buildNewsCard() {
+    final article = newsArticles[currentIndex % newsArticles.length];
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 10),
       shape: RoundedRectangleBorder(
@@ -219,7 +205,7 @@ class _NewsPageState extends State<NewsPage> {
               topRight: Radius.circular(15),
             ),
             child: CachedNetworkImage(
-              imageUrl: newsArticles[currentIndex % newsArticles.length]['imageUrl']!,
+              imageUrl: article.url,
               height: 200,
               width: double.infinity,
               fit: BoxFit.cover,
@@ -234,7 +220,7 @@ class _NewsPageState extends State<NewsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  newsArticles[currentIndex % newsArticles.length]['title']!,
+                  article.title,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -242,7 +228,7 @@ class _NewsPageState extends State<NewsPage> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  newsArticles[currentIndex % newsArticles.length]['description']!,
+                  article.content,
                   style: const TextStyle(fontSize: 14),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
@@ -256,7 +242,8 @@ class _NewsPageState extends State<NewsPage> {
   }
 
   Widget buildBottomBar() {
-    bool isCurrentArticleBookmarked = newsArticles[currentIndex % newsArticles.length]['isBookmarked'] == 'true';
+    final article = newsArticles[currentIndex % newsArticles.length];
+    bool isCurrentArticleBookmarked = article.isBookmarked ?? false;
 
     return Container(
       color: Colors.white,
@@ -264,10 +251,9 @@ class _NewsPageState extends State<NewsPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          // Bookmark Button
           GestureDetector(
             onTap: () {
-              toggleBookmark(newsArticles[currentIndex % newsArticles.length]['articleId']!);
+              toggleBookmark(article.articleId!);
             },
             child: Container(
               padding: const EdgeInsets.all(10),
@@ -282,8 +268,6 @@ class _NewsPageState extends State<NewsPage> {
               ),
             ),
           ),
-
-          // Share Button
           GestureDetector(
             onTap: () async {
               await captureAndShareScreenshot();
@@ -309,14 +293,14 @@ class _NewsPageState extends State<NewsPage> {
   void toggleBookmark(String articleId) {
     setState(() {
       for (var article in newsArticles) {
-        if (article['articleId'] == articleId) {
-          bool isBookmarked = article['isBookmarked'] == 'true';
-          article['isBookmarked'] = (!isBookmarked).toString();
+        if (article.articleId == articleId) {
+          bool isBookmarked = article.isBookmarked ?? false;
+          article.isBookmarked = !isBookmarked;
 
           if (!isBookmarked) {
-            bookmarkArticle(articleId, false);
+            bookmarkArticle(article, false);
           } else {
-            bookmarkArticle(articleId, true);
+            bookmarkArticle(article, true);
           }
           break;
         }
