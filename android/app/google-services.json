@@ -37,6 +37,13 @@
             {
               "client_id": "345943993270-huhk5uokhm4t2tjt1hobepgqrh516nt2.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "345943993270-hflhito1fk4q4clamjjt2dleunl3h1sq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.ooad.newsaggregator"
+              }
             }
           ]
         }
