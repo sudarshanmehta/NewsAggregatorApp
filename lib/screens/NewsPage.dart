@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:newsaggregator/models/Article.dart';
+import 'package:newsaggregator/screens/ProfilePage.dart';
 import 'package:newsaggregator/services/BookmarkService.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
@@ -285,6 +286,26 @@ class _NewsPageState extends State<NewsPage> {
               ),
             ),
           ),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ProfilePage()),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[300],
+              ),
+              child: const Icon(
+                Icons.person_2_rounded,
+                size: 24,
+                color: Colors.black,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -359,7 +380,7 @@ class _NewsPageState extends State<NewsPage> {
                         });
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         decoration: BoxDecoration(
                           color: isBookmarksTabSelected
                               ? Colors.blue

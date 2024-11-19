@@ -7,7 +7,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (kIsWeb) {
   await Firebase.initializeApp(
-    name: 'NewsAggregator',
     options: FirebaseOptions(
       apiKey: "AIzaSyDcJTWXtu0W35LsnZTTzqgCynjmZLE2iIU",
       authDomain: "news-aggregator-a4193.firebaseapp.com",

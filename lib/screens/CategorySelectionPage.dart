@@ -31,24 +31,31 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Categories'),
+        backgroundColor: Colors.blue,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Title Section
             const Text(
               'Select up to 5 categories you’re interested in:',
-              style: TextStyle(fontSize: 18),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
+            // Categories Grid
             Expanded(
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   childAspectRatio: 3,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
                 ),
                 itemCount: categories.length,
                 itemBuilder: (context, index) {
@@ -59,8 +66,16 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
                     onTap: () => toggleCategory(category),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.blue : Colors.grey[200],
-                        borderRadius: BorderRadius.circular(8),
+                        color: isSelected ? Colors.blue : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.shade300,
+                            blurRadius: 6,
+                            spreadRadius: 2,
+                            offset: const Offset(2, 2),
+                          ),
+                        ],
                         border: Border.all(
                           color: isSelected ? Colors.blueAccent : Colors.grey,
                           width: 2,
@@ -81,19 +96,30 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
                 },
               ),
             ),
+            const SizedBox(height: 20),
+            // Save Preferences Button
             ElevatedButton(
               onPressed: selectedCategories.isNotEmpty
                   ? () {
                 savePreferencesToFirestore();
-                // Navigate to the NewsPage
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => NewsPage()),
                 );
               }
                   : null, // Disable button if no category is selected
-              child: const Text('Save Preferences'),
-            )
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Save Preferences',
+                style: TextStyle(fontSize: 16, color: Colors.white),
+              ),
+            ),
           ],
         ),
       ),
@@ -102,11 +128,17 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
 
   Future<void> savePreferencesToFirestore() async {
     try {
-      final docRef = FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser?.uid);
+      final docRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser?.uid);
       await docRef.update({'preferredCategories': selectedCategories});
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Preferences saved: ${selectedCategories.join(', ')}')),
+        SnackBar(
+          content: Text(
+            'Preferences saved: ${selectedCategories.join(', ')}',
+          ),
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
