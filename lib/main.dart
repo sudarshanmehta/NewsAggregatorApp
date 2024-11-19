@@ -1,10 +1,13 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:newsaggregator/screens/LoginScreen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) {
   await Firebase.initializeApp(
+    name: 'NewsAggregator',
     options: FirebaseOptions(
       apiKey: "AIzaSyDcJTWXtu0W35LsnZTTzqgCynjmZLE2iIU",
       authDomain: "news-aggregator-a4193.firebaseapp.com",
@@ -15,6 +18,9 @@ void main() async {
       measurementId: "G-QY17KTC0L4",
     ),
   );
+  }else{
+    await Firebase.initializeApp();
+  }
   runApp(const NewsAggregatorApp());
 }
 class NewsAggregatorApp extends StatelessWidget {
