@@ -70,7 +70,7 @@ jobs:
 
       # Build Flutter iOS
       - name: Build Flutter iOS
-        run: flutter build ipa --release
+        run: flutter build ipa --release --no-codesign
 
       # Deploy IPA to Firebase App Distribution
       - name: Deploying IPA to Firebase App Distribution
