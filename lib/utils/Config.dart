@@ -1,6 +1,6 @@
 class AppConfig {
   // Base URL for the backend
-  static const String baseUrl = 'http://127.0.0.1:8080';
+  static const String baseUrl = 'http://3.87.91.187:8080';
 
   // API Endpoints
   static const String loginEndpoint = '$baseUrl/api/auth/login';
