@@ -58,11 +58,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // Log out the user
-  Future<void> logout() async {
+  Future<void> logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
-    Navigator.push(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => LoginScreen()),
+          (Route<dynamic> route) => false, // This clears all previous routes
     );
   }
 
@@ -70,8 +71,17 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Center(
+          child: Text(
+            'Profile',
+            style: TextStyle(
+              fontWeight: FontWeight.bold, // Makes the text bold
+              fontSize: 20,               // Optional: Adjust font size
+            ),
+          ),
+        ),
         backgroundColor: Colors.blue,
+        automaticallyImplyLeading: false,
       ),
       body: currentUser == null || notificationSettings == null
           ? const Center(child: CircularProgressIndicator())
@@ -119,7 +129,9 @@ class _ProfilePageState extends State<ProfilePage> {
             // Logout Button
             Center(
               child: ElevatedButton(
-                onPressed: logout,
+                onPressed: () async{
+                  await logout(context);
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   padding: const EdgeInsets.symmetric(

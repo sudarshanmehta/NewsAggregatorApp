@@ -1,6 +1,6 @@
 class AppConfig {
   // Base URL for the backend
-  static const String baseUrl = 'http://3.87.91.187:8080';
+  static const String baseUrl = 'http://localhost:8080';
 
   // API Endpoints
   static const String loginEndpoint = '$baseUrl/api/auth/login';
@@ -8,6 +8,7 @@ class AppConfig {
   static const String registerEndpoint = '$baseUrl/api/users/register';
   static const String bookmark = '$baseUrl/api/bookmark/createBookmark';
   static const String removeBookmark = '$baseUrl/api/bookmark/removeBookmark';
+  static const String fetchArticles = '$baseUrl/api/articles/fetch';
 
   // Additional configuration
   static const int requestTimeout = 5000; // Timeout duration in milliseconds

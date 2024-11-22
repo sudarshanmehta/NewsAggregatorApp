@@ -30,8 +30,17 @@ class _CategorySelectionPageState extends State<CategorySelectionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Select Categories'),
+        title: const Center(
+          child: Text(
+            'Categories',
+            style: TextStyle(
+              fontWeight: FontWeight.bold, // Makes the text bold
+              fontSize: 20,               // Optional: Adjust font size
+            ),
+          ),
+        ),
         backgroundColor: Colors.blue,
+        automaticallyImplyLeading: false,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

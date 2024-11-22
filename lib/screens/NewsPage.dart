@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:newsaggregator/models/Article.dart';
 import 'package:newsaggregator/screens/ProfilePage.dart';
+import 'package:newsaggregator/services/ArticleService.dart';
 import 'package:newsaggregator/services/BookmarkService.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
@@ -13,6 +14,7 @@ import 'CategorySelectionPage.dart';
 
 class NewsPage extends StatefulWidget {
   final BookmarkService bookmarkService = BookmarkService();
+  final ArticleService articleService = ArticleService();
 
   NewsPage({super.key});
 
@@ -68,6 +70,8 @@ class _NewsPageState extends State<NewsPage> {
       List<Article> fetchedArticles = snapshot.docs.map((doc) {
         return Article.fromFirestore(doc);
       }).toList();
+
+      fetchedArticles.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
 
       setState(() {
         newsArticles = fetchedArticles;
@@ -147,46 +151,66 @@ class _NewsPageState extends State<NewsPage> {
     }
   }
 
+  Future<void> fetchLatestArticlesFromAPI() async {
+    // Replace with API call logic
+    final response = await widget.articleService.fetchArticle(firebaseToken);
+    if (response) {
+      fetchNewsArticles();
+    } else {
+      print("Failed to fetch latest articles from API.");
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Screenshot(
       controller: screenshotController,
       child: Scaffold(
-        body: newsArticles.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : Stack(
-          children: [
-            GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onHorizontalDragEnd: (details) {
-                if (details.primaryVelocity! < 0) {
+        body: RefreshIndicator(
+          onRefresh: fetchLatestArticlesFromAPI, // Define this method to fetch newer articles
+          child: newsArticles.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : Stack(
+            children: [
+              GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onHorizontalDragEnd: (details) {
+                  if(details.primaryVelocity! > 0)
                   navigateToCategoriesSelectionPage(context);
-                }
-              },
-              onTap: () {
-                setState(() {
-                  isMenuVisible = true;
-                });
-              },
-              child: Dismissible(
-                key: UniqueKey(),
-                direction: DismissDirection.vertical,
-                onDismissed: (direction) {
-                  if (direction == DismissDirection.up) {
-                    loadNextArticle();
-                  } else if (direction == DismissDirection.down) {
-                    loadPreviousArticle();
+                },
+                onTap: () {
+                  setState(() {
+                    isMenuVisible = true;
+                  });
+                },
+                onVerticalDragEnd: (details) async {
+                  if (details.primaryVelocity! > 0) {
+                    // Swipe down: Fetch newer articles
+                    await fetchLatestArticlesFromAPI();
                   }
                 },
-                child: buildNewsCard(),
+                child: Dismissible(
+                  key: UniqueKey(),
+                  direction: DismissDirection.vertical,
+                  onDismissed: (direction) {
+                    if (direction == DismissDirection.up) {
+                      loadNextArticle();
+                    } else if (direction == DismissDirection.down) {
+                      loadPreviousArticle();
+                    }
+                  },
+                  child: buildNewsCard(),
+                ),
               ),
-            ),
-            if (isMenuVisible) buildMenuOverlay(),
-          ],
+              if (isMenuVisible) buildMenuOverlay(),
+            ],
+          ),
         ),
       ),
     );
   }
+
 
   Widget buildNewsCard() {
     final article = newsArticles[currentIndex % newsArticles.length];
