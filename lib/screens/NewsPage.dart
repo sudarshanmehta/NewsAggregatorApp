@@ -166,45 +166,47 @@ class _NewsPageState extends State<NewsPage> {
   Widget build(BuildContext context) {
     return Screenshot(
       controller: screenshotController,
-      child: Scaffold(
-        body: RefreshIndicator(
-          onRefresh: fetchLatestArticlesFromAPI, // Define this method to fetch newer articles
-          child: newsArticles.isEmpty
-              ? const Center(child: CircularProgressIndicator())
-              : Stack(
-            children: [
-              GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onHorizontalDragEnd: (details) {
-                  if(details.primaryVelocity! > 0)
-                  navigateToCategoriesSelectionPage(context);
-                },
-                onTap: () {
-                  setState(() {
-                    isMenuVisible = true;
-                  });
-                },
-                onVerticalDragEnd: (details) async {
-                  if (details.primaryVelocity! > 0) {
-                    // Swipe down: Fetch newer articles
-                    await fetchLatestArticlesFromAPI();
-                  }
-                },
-                child: Dismissible(
-                  key: UniqueKey(),
-                  direction: DismissDirection.vertical,
-                  onDismissed: (direction) {
-                    if (direction == DismissDirection.up) {
-                      loadNextArticle();
-                    } else if (direction == DismissDirection.down) {
-                      loadPreviousArticle();
+      child: SafeArea(
+        child: Scaffold(
+          body: RefreshIndicator(
+            onRefresh: fetchLatestArticlesFromAPI,
+            child: newsArticles.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : Stack(
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onHorizontalDragEnd: (details) {
+                    if (details.primaryVelocity! > 0) {
+                      navigateToCategoriesSelectionPage(context);
                     }
                   },
-                  child: buildNewsCard(),
+                  onTap: () {
+                    setState(() {
+                      isMenuVisible = true;
+                    });
+                  },
+                  onVerticalDragEnd: (details) async {
+                    if (details.primaryVelocity! > 0) {
+                      await fetchLatestArticlesFromAPI();
+                    }
+                  },
+                  child: Dismissible(
+                    key: UniqueKey(),
+                    direction: DismissDirection.vertical,
+                    onDismissed: (direction) {
+                      if (direction == DismissDirection.up) {
+                        loadNextArticle();
+                      } else if (direction == DismissDirection.down) {
+                        loadPreviousArticle();
+                      }
+                    },
+                    child: buildNewsCard(),
+                  ),
                 ),
-              ),
-              if (isMenuVisible) buildMenuOverlay(),
-            ],
+                if (isMenuVisible) buildMenuOverlay(),
+              ],
+            ),
           ),
         ),
       ),
@@ -215,56 +217,59 @@ class _NewsPageState extends State<NewsPage> {
   Widget buildNewsCard() {
     final article = newsArticles[currentIndex % newsArticles.length];
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      elevation: 4,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(15),
-              topRight: Radius.circular(15),
+    return Padding(
+      padding: const EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0, bottom: 8.0),
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        elevation: 4,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(15),
+                topRight: Radius.circular(15),
+              ),
+              child: CachedNetworkImage(
+                imageUrl: article.url,
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => const CircularProgressIndicator(),
+                errorWidget: (context, url, error) => const Icon(Icons.error),
+              ),
             ),
-            child: CachedNetworkImage(
-              imageUrl: article.url,
-              height: 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              placeholder: (context, url) =>
-              const CircularProgressIndicator(),
-              errorWidget: (context, url, error) => const Icon(Icons.error),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(15.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  article.title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+            Padding(
+              padding: const EdgeInsets.all(15.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    article.title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  article.content,
-                  style: const TextStyle(fontSize: 14),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  Text(
+                    article.content,
+                    style: const TextStyle(fontSize: 14),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
 
   Widget buildBottomBar() {
     final article = newsArticles[currentIndex % newsArticles.length];
@@ -272,7 +277,12 @@ class _NewsPageState extends State<NewsPage> {
 
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 10,
+        bottom: 20, // Adjust for bottom padding
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -334,6 +344,7 @@ class _NewsPageState extends State<NewsPage> {
       ),
     );
   }
+
 
   void toggleBookmark(String articleId) {
     setState(() {
