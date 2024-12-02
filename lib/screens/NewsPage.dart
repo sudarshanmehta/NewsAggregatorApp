@@ -50,6 +50,7 @@ class _NewsPageState extends State<NewsPage> {
       final User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         final String? token = await currentUser.getIdToken(false);
+        final String? id = currentUser.uid;
         setState(() {
           firebaseToken = token;
         });
@@ -64,20 +65,67 @@ class _NewsPageState extends State<NewsPage> {
   // Fetch news articles from Firebase Firestore
   Future<void> fetchNewsArticles() async {
     try {
-      QuerySnapshot snapshot =
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser == null) {
+        print("No user is currently signed in.");
+        return;
+      }
+
+      String userId = currentUser.uid;
+
+      // Build the userRef as a DocumentReference
+      DocumentReference userRef =
+      FirebaseFirestore.instance.collection('users').doc(userId);
+
+      // Query to find the recommendation document for the current user
+      QuerySnapshot recommendationQuery = await FirebaseFirestore.instance
+          .collection('recommendations')
+          .where('userRef', isEqualTo: userRef)
+          .get();
+
+      List<String> recommendedArticleIds = [];
+      List<Article> fetchedArticles = [];
+
+      if (recommendationQuery.docs.isNotEmpty) {
+        // Extract the recommendations array from the matched document
+        DocumentSnapshot userRecommendationDoc = recommendationQuery.docs.first;
+        recommendedArticleIds =
+        List<String>.from(userRecommendationDoc['recommendations'] ?? []);
+      } else {
+        print("No recommendation document found for this user.");
+      }
+
+      // Fetch all articles from the "articles" collection
+      QuerySnapshot allArticlesQuery =
       await FirebaseFirestore.instance.collection('articles').get();
 
-      List<Article> fetchedArticles = snapshot.docs.map((doc) {
+      fetchedArticles = allArticlesQuery.docs.map((doc) {
         return Article.fromFirestore(doc);
       }).toList();
 
+      // Sort articles by date first (publishedAt in descending order)
       fetchedArticles.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
 
+      // Then prioritize recommended articles to the top
+      fetchedArticles.sort((a, b) {
+        bool aIsRecommended = recommendedArticleIds.contains(a.articleId);
+        bool bIsRecommended = recommendedArticleIds.contains(b.articleId);
+
+        // Recommended articles appear on top
+        if (aIsRecommended && !bIsRecommended) return -1;
+        if (!aIsRecommended && bIsRecommended) return 1;
+
+        // If both or neither are recommended, keep existing order
+        return 0;
+      });
+
+      // Update the state with the sorted articles
       setState(() {
         newsArticles = fetchedArticles;
       });
     } catch (e) {
-      print("Error fetching articles: $e");
+      print("Error fetching recommendations or articles: $e");
     }
   }
 
